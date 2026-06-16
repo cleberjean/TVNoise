@@ -1,10 +1,10 @@
 ;*****************************************************************************
-; Screen Saver "TVNoise" Version 7 (LFSR Generator)
+; Screen Saver "TVNoise" Version 8 (Uses BX on the LFSR for the Gray Level)
 ; By Cleber Jean Barranco (cleberjean@hotmail.com)
 ; First version in 01/Jan/2003.
 ; Last change in 16/Jun/2026.
 ;
-; Uses BP and BL to store the LFSR seeds for dots positions on screen and
+; Uses BP and BX to store the LFSR seeds for dots positions on screen and
 ; the dot bright intensity (gray level).
 ; DX stores the initial seed for the dot position LFSR.
 ;
@@ -24,7 +24,7 @@
 ;-----------------------------------------------------------------------------
     LFSR_XOR_MASK       equ 0xB400 ; XOR mask for LFSR computing
     LFSR_MAX_PERIOD     equ 64000  ; Fill all 64000 bytes from screen 320x200
-    LFSR_XOR_GRAY_MASK  equ 0xB8   ; XOR mask for gray level LFSR
+    LFSR_XOR_GRAY_MASK  equ 0x8805 ; XOR mask for gray level LFSR
     ESC_KEY             equ 0x1B   ; Esc key ASCII code
 
 
@@ -110,21 +110,25 @@ Gen_Pallete:
 
 
 ;-----------------------------------------------------------------------------
-; Init LFSR Generator and the Seed for LFSR Gray Generator
+; Init LFSR Dots Position Generator
 ;-----------------------------------------------------------------------------
-Init_LFSRs_Seeds:
     call  Get_Initial_LFSR_Seed
-    mov   bx,dx
-    xor   bl,bh                    ; BL stores the LFSR seed of gray level
-    jz    Init_LFSRs_Seeds         ; LFSR seed CAN NOT be 0!
+    
+
+;-----------------------------------------------------------------------------
+; Init Seed of LFSR Gray Level Generator (BX)   
+;-----------------------------------------------------------------------------
+    mov   bh,dl
+    mov   bl,dh
 
 
 ;-----------------------------------------------------------------------------
-; Init VGA Register
+; Init Registers
 ;-----------------------------------------------------------------------------
     mov   ax,0A000h                ; VGA 320x200x256 segment
     mov   es,ax                    ; Now ES will point to VGA
-    
+    mov   cx,3F20h                 ; CH = Gray level mask, CL = Pallete start
+
 
 ;-----------------------------------------------------------------------------
 ; Noise Loop
@@ -230,20 +234,23 @@ Get_Dot_Position:
 
 ;-----------------------------------------------------------------------------
 ; Galois LFSR Gray Raffle
-; Uses BL to store the LFSR seed for gray level (bright intensity).
+; Uses BX to store the LFSR seed for gray level (bright intensity).
 ;
-; Input : BL = LFSR seed for gray level
+; Input : BX = LFSR seed for gray level
 ; Output: AL = Pallete gray level
 ;-----------------------------------------------------------------------------
 Get_Gray_Level:
-    shr   bl,1
+    shr   bx,1
     jnc   .Calc_Gray
-    xor   bl,LFSR_XOR_GRAY_MASK
+    xor   bx,LFSR_XOR_GRAY_MASK
 
 .Calc_Gray:
-    mov   al,bl                    ; Copies seed to AL
-    and   al,3Fh                   ; Ajusts gray level period for 0 to 63
-    add   al,20h                   ; Ajusts gray level for the pallete
+    mov   ax,bx                    ; Copies seed to AX
+    xor   al,ah                    ; Shuffle it a little more
+;    and   al,3Fh                   ; Ajusts gray level period for 0 to 63
+;    add   al,20h                   ; Ajusts gray level for the pallete
+    and   al,ch                    ; Ajusts gray level period for 0 to 63
+    add   al,cl                    ; Ajusts gray level for the pallete
     ret
 
 
@@ -257,5 +264,5 @@ Get_Gray_Level:
 Need_VGA_Msg    db 0Dh, 0Ah, "I need a VGA video card!", 0Dh, 0Ah, "$"
 
 
-File_Signature  db "   TVNoise7 - 16jun26   "
+File_Signature  db "   TVNoise8 - 16jun26   "
 
