@@ -1,10 +1,15 @@
 ;*****************************************************************************
-;Screen Saver "TVNoise" Version 7 (LFSR Generator)
-;By Cleber Jean Barranco (cleberjean@hotmail.com)
-;First version in 01/Jan/2003.
-;Last change in 15/Jun/2026
+; Screen Saver "TVNoise" Version 7 (LFSR Generator)
+; By Cleber Jean Barranco (cleberjean@hotmail.com)
+; First version in 01/Jan/2003.
+; Last change in 15/Jun/2026
 ;
-;Compile with: "nasm tvnoise.asm -o tvnoise.com"
+; Uses BP and BL to store the LFSR seeds for dots positions on screen and
+; the dot bright intensity (gray level).
+; DX stores the initial seed for the dot position LFSR.
+;
+; Compile with: "nasm tvnoise.asm -o tvnoise.com"
+;
 ;*****************************************************************************
 
 
@@ -113,12 +118,12 @@ Gen_Pallete:
 ;-----------------------------------------------------------------------------
 ; Init LFSR Generator and the Seed for LFSR Gray Generator
 ;-----------------------------------------------------------------------------
-Init_LFSR_Seed:
+Init_LFSRs_Seeds:
     call  Get_Initial_LFSR_Seed
-    xor   dl,dh
-    jz    Init_LFSR_Seed           ; LFSR seed CAN NOT be 0!
-    mov   [Gray_Level],dl          ; Stores non zero value
-
+    mov   bx,dx
+    xor   bl,bh                    ; BL stores the LFSR seed of gray level
+    jz    Init_LFSRs_Seeds         ; LFSR seed CAN NOT be 0!
+                                   ; for the LFSR seed of gray level)
 
 ;-----------------------------------------------------------------------------
 ; Noise Loop
@@ -127,10 +132,10 @@ Init_LFSR_Seed:
 Noise_Loop:
     mov   di,bp                    ; Copies LFSR number to DI
     dec   di                       ; This allow to plot at position 0
-    call  Get_Gray                 ; Raffle the gray level
+    call  Get_Gray_Level           ; Raffle the gray level (bright intensity)
     stosb                          ; Plots the gray dot
-    call  Get_LFSR_Number
-    cmp   bp,[Initial_Seed]        ; Were all 64000 dots plotted?
+    call  Get_Dot_Position
+    cmp   bp,dx                    ; Were all 64000 dots plotted?
     jne   Noise_Loop               ; Not yet
 
 ; Checks Keyboard    
@@ -173,24 +178,23 @@ Check_Keyboard:
 ; Gets initial seed from system ticks.
 ;
 ; Input : None.
-; Output: DX, BP = Random seed for the LFSR.
+; Output: DX, BP = Initial random seed for the LFSR.
 ;-----------------------------------------------------------------------------
 Get_Initial_LFSR_Seed:
     xor   ah,ah
     int   1Ah                      ; Get system clock ticks since midnight
     xor   dx,cx                    ; XOR between high and low order
     jnz   .Seed_Not_Zero           ; If non zero, store on memory and copies to DI
-    inc   dx                       ; Turns seed = 1 (seed CANNOT be 0)
+    inc   dx                       ; Turns seed = 1 (the seed CAN NOT be 0)
 
 .Seed_Not_Zero:
     cmp   dx,LFSR_MAX_PERIOD       ; Checks if seed is on range 1 to 64000
     jbe   .Seed_OK                 ; Is seed > 64000?
-    call  Get_LFSR_Number          ; Yes, then raffle a new value into
+    call  Get_Dot_Position         ; Yes, then raffle a new value into
                                    ; period from 1 to 64000.
-    mov   dx,bp                    ; Copies the drawn LFSR seed in DX,
-                                   ; to save it on the next instruction.
+    mov   dx,bp                    ; Copies the drawn LFSR seed in DX
+                                   ; (Register of the initial seed).
 .Seed_OK:
-    mov   [Initial_Seed],dx        ; Randomize LFSR initial seed
     mov   bp,dx                    ; Initializes BP (LFSR Seed Register)
     ret
 
@@ -208,7 +212,7 @@ Get_Initial_LFSR_Seed:
 ;              Decrement BP value by 1 to get 0 to 63999, but you MUST
 ;              RESTORE it again, after the use. (Seed can not be 0)
 ;-----------------------------------------------------------------------------
-Get_LFSR_Number:
+Get_Dot_Position:
     shr   bp,1
     jnc   .Check_Bound
     xor   bp,LFSR_XOR_MASK
@@ -216,7 +220,7 @@ Get_LFSR_Number:
 ; Checks Value Limit (not used if period is 65536)
 .Check_Bound:
     cmp   bp,LFSR_MAX_PERIOD
-    ja    Get_LFSR_Number          ; Gen another number if number >= max period
+    ja    Get_Dot_Position         ; Gen another number if number >= max period
                                    ; JA allow generate from 0 up to maximum
                                    ; period - 1, by decrementing BP, using
                                    ; it and incrementing it again to
@@ -226,18 +230,18 @@ Get_LFSR_Number:
 
 ;-----------------------------------------------------------------------------
 ; Galois LFSR Gray Raffle
+; Uses BL to store the LFSR seed for gray level (bright intensity).
 ;
-; Input : None
+; Input : BL = LFSR seed for gray level
 ; Output: AL = Pallete gray level
 ;-----------------------------------------------------------------------------
-Get_Gray:
-    mov   al,[Gray_Level]
-    shr   al,1
+Get_Gray_Level:
+    shr   bl,1
     jnc   .Save_Gray
-    xor   al,LFSR_XOR_GRAY_MASK
+    xor   bl,LFSR_XOR_GRAY_MASK
 
 .Save_Gray:
-    mov   [Gray_Level],al          ; Saves LFSR color value
+    mov   al,bl                    ; Copies gray level to AL
     and   al,3Fh                   ; Ajusts gray level period for 0 to 63
     add   al,20h                   ; Ajusts gray level for the pallete
     ret
@@ -249,16 +253,6 @@ Get_Gray:
 ;    section .data                 ; NOT IS GOOD USE IT WITH .COM FILES!
                                    ; Adds byte padding, causing confusion
                                    ; with binary code size optimizations.
-
-;LFSR_Seed       dw 1               ; LFSR seed NEVER must be 0, or
-;                                   ; LFSR will freeze with zeros!
-
-Initial_Seed    dw 1               ; Stores the randomized LFSR initial
-                                   ; seed and used to check the restart
-                                   ; of LFSR sequence
-
-Gray_Level      db 41h             ; DO NOT BE 0!
-
 
 Need_VGA_Msg    db 0Dh, 0Ah, "I need a VGA video card!", 0Dh, 0Ah, "$"
 
