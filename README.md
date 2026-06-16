@@ -1,7 +1,7 @@
 # TVNoise
 Analog TV Screen Noise on DOS
 
-**Only 254 bytes of 8086 code!**
+**Only 240 bytes of 8086 code!**
 
 - Tested on bare-metal.
 
