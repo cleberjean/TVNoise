@@ -7,4 +7,4 @@ Analog TV screen noise using LFSR on DOS.
 
 Compile with: **nasm tvnoise.asm -o tvnoise.com**
 <br/><br/><br/>
-**You are free to copy, use, modify or suggest alterations in this code.**
+**You are free to copy, use, modify or suggest alterations for this code.**
