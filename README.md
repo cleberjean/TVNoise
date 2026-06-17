@@ -1,5 +1,5 @@
 # TVNoise
-Analog TV Screen Noise on DOS
+Analog TV screen noise using LFSR on DOS.
 
 **Only 119 bytes of 8086 code on TVNSmall.**
 
