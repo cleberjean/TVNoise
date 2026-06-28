@@ -2,7 +2,7 @@
 ; Screen Saver "TVNoise" Version 8 (Uses BX on the LFSR for the Gray Level)
 ; By Cleber Jean Barranco (cleberjean@hotmail.com)
 ; First version in 01/Jan/2003.
-; Last change in 16/Jun/2026.
+; Last change in 18/Jun/2026.
 ;
 ; Uses BP and BX to store the LFSR seeds for dots positions on screen and
 ; the dot bright intensity (gray level).
@@ -22,7 +22,7 @@
 ;-----------------------------------------------------------------------------
 ; Constants
 ;-----------------------------------------------------------------------------
-    LFSR_XOR_MASK       equ 0xB400 ; XOR mask for LFSR computing
+    LFSR_XOR_POS_MASK   equ 0xB400 ; XOR mask for dot position LFSR computing
     LFSR_MAX_PERIOD     equ 64000  ; Fill all 64000 bytes from screen 320x200
     LFSR_XOR_GRAY_MASK  equ 0x8805 ; XOR mask for gray level LFSR
     ESC_KEY             equ 0x1B   ; Esc key ASCII code
@@ -85,11 +85,11 @@ Set_VGA_Mode:
 ; Starts the Gray Pallete Generation
 ;-----------------------------------------------------------------------------
 Init_Pallete:
+    xor   al,al                    ; Value of the first color
     xor   bx,bx                    ; Initial value fo the Red and Green
     xor   cx,cx                    ; Initial value of the Blue
-    mov   al,20h                   ; Value of the first color (32)
-    cli                            ; Stop interrupts
     mov   dx,03C8h
+;    cli                            ; Stop interrupts
     out   dx,al                    ; Informs to VGA the 1st color value from pallete
     inc   dx                       ; DX = 03C9h
 
@@ -105,8 +105,8 @@ Gen_Pallete:
     inc   bx                       ; Increments Green (it's really BX, 1 byte gain)
     inc   cx                       ; Increments Blue (it's really CX, 1 byte gain)
     cmp   cl,40h                   ; Checks if was created all the 64 gray tones
-    jnz   Gen_Pallete              ; Still no
-    sti                            ; Renable interrupts
+    jne   Gen_Pallete              ; Still no
+;    sti                            ; Renable interrupts
 
 
 ;-----------------------------------------------------------------------------
@@ -127,8 +127,8 @@ Gen_Pallete:
 ;-----------------------------------------------------------------------------
     mov   ax,0A000h                ; VGA 320x200x256 segment
     mov   es,ax                    ; Now ES will point to VGA
-    mov   cx,3F20h                 ; CH = Gray level mask, CL = Pallete start
-
+    mov   ch,3Fh                   ; Max gray level mask (range is 0 to 63)
+                                   ; (CH to not confuse with a counter loop)
 
 ;-----------------------------------------------------------------------------
 ; Noise Loop
@@ -182,7 +182,8 @@ Check_Keyboard:
 ; Gets the initial seed from system ticks.
 ;
 ; Input : None.
-; Output: DX, BP = Initial random seed for the LFSR.
+; Output: BP = Initial random seed for the LFSR.
+;         DX = Initial seed (constant for checking of 64000 loops)
 ;-----------------------------------------------------------------------------
 Get_Initial_LFSR_Seed:
     xor   ah,ah
@@ -219,7 +220,7 @@ Get_Initial_LFSR_Seed:
 Get_Dot_Position:
     shr   bp,1
     jnc   .Check_Bound
-    xor   bp,LFSR_XOR_MASK
+    xor   bp,LFSR_XOR_POS_MASK
 
 ; Checks Value Limit (not used if period is 65536)
 .Check_Bound:
@@ -237,7 +238,9 @@ Get_Dot_Position:
 ; Uses BX to store the LFSR seed for gray level (bright intensity).
 ;
 ; Input : BX = LFSR seed for gray level
-; Output: AL = Pallete gray level
+;         CH = Color range mask (0 - 63)
+; Output: AL = Gray level (0 - 63)
+;         BX = LFSR seed for next calculation 
 ;-----------------------------------------------------------------------------
 Get_Gray_Level:
     shr   bx,1
@@ -247,10 +250,8 @@ Get_Gray_Level:
 .Calc_Gray:
     mov   ax,bx                    ; Copies seed to AX
     xor   al,ah                    ; Shuffle it a little more
-;    and   al,3Fh                   ; Ajusts gray level period for 0 to 63
-;    add   al,20h                   ; Ajusts gray level for the pallete
-    and   al,ch                    ; Ajusts gray level period for 0 to 63
-    add   al,cl                    ; Ajusts gray level for the pallete
+;    and   al,3Fh                   ; Ajusts gray level for range 0 to 63
+    and   al,ch                    ; Ajusts gray level for range 0 to 63
     ret
 
 
@@ -264,5 +265,5 @@ Get_Gray_Level:
 Need_VGA_Msg    db 0Dh, 0Ah, "I need a VGA video card!", 0Dh, 0Ah, "$"
 
 
-File_Signature  db "   TVNoise8 - 16jun26   "
+File_Signature  db "   TVNoise8 - 18jun26   "
 
