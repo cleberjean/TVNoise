@@ -3,7 +3,7 @@
 ; * Only LFSRs, Keyboard Checking, Gray Pallete Generation and Effect Loop *
 ; By Cleber Jean Barranco (cleberjean@hotmail.com)
 ; First version in 01/Jan/2003.
-; Last change in 16/Jun/2026.
+; Last change in 18/Jun/2026.
 ;
 ; Uses BP and BL to store the LFSR seeds for dots positions on screen and
 ; the dot bright intensity (gray level).
@@ -23,7 +23,7 @@
 ;-----------------------------------------------------------------------------
 ; Constants
 ;-----------------------------------------------------------------------------
-    LFSR_XOR_MASK       equ 0xB400 ; XOR mask for LFSR computing
+    LFSR_XOR_POS_MASK   equ 0xB400 ; XOR mask for LFSR computing
     LFSR_MAX_PERIOD     equ 64000  ; Fill all 64000 bytes from screen 320x200
     LFSR_XOR_GRAY_MASK  equ 0xB8   ; XOR mask for gray level LFSR
     ESC_KEY             equ 0x1B   ; Esc key ASCII code
@@ -45,11 +45,11 @@ Start:
 ; Starts the Gray Pallete Generation
 ;-----------------------------------------------------------------------------
 Init_Pallete:
+    xor   al,al                    ; Value of the first color
     xor   bx,bx                    ; Initial value fo the Red and Green
     xor   cx,cx                    ; Initial value of the Blue
-    mov   al,20h                   ; Value of the first color (32)
-    cli                            ; Stop interrupts
     mov   dx,03C8h
+;    cli                            ; Stop interrupts
     out   dx,al                    ; Informs to VGA the 1st color value from pallete
     inc   dx                       ; DX = 03C9h
 
@@ -65,8 +65,8 @@ Gen_Pallete:
     inc   bx                       ; Increments Green (it's really BX, 1 byte gain)
     inc   cx                       ; Increments Blue (it's really CX, 1 byte gain)
     cmp   cl,40h                   ; Checks if was created all the 64 gray tones
-    jnz   Gen_Pallete              ; Still no
-    sti                            ; Renable interrupts
+    jne   Gen_Pallete              ; Still no
+;    sti                            ; Renable interrupts
 
 
 ;-----------------------------------------------------------------------------
@@ -146,7 +146,7 @@ Check_Keyboard:
 Get_Dot_Position:
     shr   bp,1
     jnc   .Check_Bound
-    xor   bp,LFSR_XOR_MASK
+    xor   bp,LFSR_XOR_POS_MASK
 
 ; Checks Value Limit (not used if period is 65536)
 .Check_Bound:
@@ -164,7 +164,8 @@ Get_Dot_Position:
 ; Uses BL to store the LFSR seed for the gray level (bright intensity).
 ;
 ; Input : BL = LFSR seed for gray level
-; Output: AL = Pallete gray level
+; Output: AL = Gray level (0 - 63)
+;         BL = LFSR seed for next calculation
 ;-----------------------------------------------------------------------------
 Get_Gray_Level:
     shr   bl,1
@@ -173,7 +174,6 @@ Get_Gray_Level:
 
 .Calc_Gray:
     mov   al,bl                    ; Copies seed to AL
-    and   al,3Fh                   ; Ajusts gray level period for 0 to 63
-    add   al,20h                   ; Ajusts gray level for the pallete
+    and   al,3Fh                   ; Ajusts gray level range for 0 to 63
     ret
 
