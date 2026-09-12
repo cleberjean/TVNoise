@@ -1,0 +1,21 @@
+8-bit LFSR Galois XOR Mask (255 Values)
+=======================================
+
+From https://users.ece.cmu.edu/~koopman/lfsr/8.txt (in 12/sep/2026)
+
+8E
+95
+96
+A6
+AF
+B1
+B2
+B4
+B8
+C3
+C6
+D4
+E1
+E7
+F3
+FA
