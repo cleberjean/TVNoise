@@ -185,7 +185,7 @@ Get_Initial_LFSR_Seed:
     int   1Ah                      ; Get system clock ticks since midnight
     xor   dx,cx                    ; XOR between high and low order
     jnz   .Seed_Not_Zero           ; If non zero, store on memory and copies to DI
-    inc   dx                       ; Turns seed = 1 (the seed CAN NOT be 0)
+    dec   dx                       ; Turns seed = FFFFh (the seed CAN NOT be 0)
 
 .Seed_Not_Zero:
     mov   bp,dx                    ; Initializes BP (LFSR Seed Register)
@@ -193,9 +193,9 @@ Get_Initial_LFSR_Seed:
     jbe   .Seed_OK                 ; Is seed > 64000?
     call  Get_Dot_Position         ; Yes, then raffle a new value into
                                    ; period from 1 to 64000.
-.Seed_OK:
     mov   dx,bp                    ; Copies the drawn LFSR seed in DX
                                    ; (Register of the initial seed).
+.Seed_OK:
     ret
 
 
