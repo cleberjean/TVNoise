@@ -173,10 +173,12 @@ Check_Keyboard:
 ;-----------------------------------------------------------------------------
 ; Initializes Initial FLSR Seed (= RANDOMIZE TIMER in QBasic)
 ; Gets the initial seed from system ticks.
+; 20oct2026.
 ;
 ; Input : None.
 ; Output: BP = Initial random seed for the LFSR.
-;         DX = Initial seed (constant for checking of 64000 loops)
+;         DX = Initial seed (is constant for checking of 64000 loops on
+;              all runtime).
 ;-----------------------------------------------------------------------------
 Get_Initial_LFSR_Seed:
     xor   ah,ah
@@ -186,14 +188,14 @@ Get_Initial_LFSR_Seed:
     inc   dx                       ; Turns seed = 1 (the seed CAN NOT be 0)
 
 .Seed_Not_Zero:
+    mov   bp,dx                    ; Initializes BP (LFSR Seed Register)
     cmp   dx,LFSR_MAX_PERIOD       ; Checks if seed is on range 1 to 64000
     jbe   .Seed_OK                 ; Is seed > 64000?
     call  Get_Dot_Position         ; Yes, then raffle a new value into
                                    ; period from 1 to 64000.
+.Seed_OK:
     mov   dx,bp                    ; Copies the drawn LFSR seed in DX
                                    ; (Register of the initial seed).
-.Seed_OK:
-    mov   bp,dx                    ; Initializes BP (LFSR Seed Register)
     ret
 
 
@@ -201,9 +203,9 @@ Get_Initial_LFSR_Seed:
 ; Galois LFSR Number Generator (stored in BP reg by all program execution)
 ; Since LFSR does not generate the value 0 (is forbidden), we must
 ; generate a period from 1 to 64000, to can obtain the value 0 (BP = 1), 
-; by decrementing BP before using it and incrementing it again after use,
-; to back it to a non zero value, since BP stores the LFSR seed throughout 
-; the program.
+; by decrementing BP before using it and then incrementing it again after
+; the use, to back it to a non zero value, since BP stores the LFSR seed
+; throughout the program.
 ;
 ; Input : BP = LFSR seed
 ; Output: BP = New LFSR seed (value from 1 to 64000)
