@@ -3,7 +3,7 @@
 ; * Only LFSRs, Keyboard Checking, Gray Pallete Generation and Effect Loop *
 ; By Cleber Jean Barranco (cleberjean@hotmail.com)
 ; First version in 01/Jan/2003.
-; Last change in 18/Jun/2026.
+; Last change in 04/Nov/2026.
 ;
 ; Uses BP and BL to store the LFSR seeds for dots positions on screen and
 ; the dot bright intensity (gray level).
@@ -43,29 +43,27 @@ Start:
 
 ;-----------------------------------------------------------------------------
 ; Starts the Gray Pallete Generation
-;-----------------------------------------------------------------------------
+; ----------------------------------
+;
+; Generates 4 gray scales from 0 to 255. (This solves the full black color 0
+; (RGB = 000) issue due the LFSR restriction (of not to allow zero value),
+; where we will have full back intensity on colors index 64, 128 and 192)
+;;-----------------------------------------------------------------------------
 Init_Pallete:
-    xor   al,al                    ; Value of the first color
-    xor   bx,bx                    ; Initial value fo the Red and Green
-    xor   cx,cx                    ; Initial value of the Blue
+    xor   ax,ax                    ; AL = 0
     mov   dx,03C8h
 ;    cli                            ; Stop interrupts
     out   dx,al                    ; Informs to VGA the 1st color value from pallete
     inc   dx                       ; DX = 03C9h
 
-; Create a 64 Gray Tones Pallete
+
+; Create 4 x 64 Gray Tones Pallete
 Gen_Pallete:
-    mov   al,bh
-    out   dx,al                    ; Puts Red value (BH)
-    mov   al,bl
-    out   dx,al                    ; Puts Green value (BL)
-    mov   al,cl
-    out   dx,al                    ; Puts Blue value (CL)
-    inc   bh                       ; Increments Red (BH)
-    inc   bx                       ; Increments Green (it's really BX, 1 byte gain)
-    inc   cx                       ; Increments Blue (it's really CX, 1 byte gain)
-    cmp   cl,40h                   ; Checks if was created all the 64 gray tones
-    jne   Gen_Pallete              ; Still no
+    out   dx,al                    ; Puts Red value
+    out   dx,al                    ; Puts Green value
+    out   dx,al                    ; Puts Blue value
+    inc   al                       ; Increments the gray intensity
+    jnz   Gen_Pallete              ; Checks for 256 color index generated
 ;    sti                            ; Renable interrupts
 
 
@@ -164,7 +162,7 @@ Get_Dot_Position:
 ; Uses BL to store the LFSR seed for the gray level (bright intensity).
 ;
 ; Input : BL = LFSR seed for gray level
-; Output: AL = Gray level (0 - 63)
+; Output: AL = Gray level (1 - 63, 64 - 127, 128 - 191, 192 - 255)
 ;         BL = LFSR seed for next calculation
 ;-----------------------------------------------------------------------------
 Get_Gray_Level:
@@ -174,6 +172,5 @@ Get_Gray_Level:
 
 .Calc_Gray:
     mov   al,bl                    ; Copies seed to AL
-    and   al,3Fh                   ; Ajusts gray level range for 0 to 63
     ret
 
